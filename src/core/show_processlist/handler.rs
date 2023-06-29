@@ -158,7 +158,7 @@ async fn start_processlist_by_instance(
             .iter()
             .map(|info| info.clone())
             .filter(|info| {
-                if info.command.as_ref().unwrap() == "aaa"
+                if info.command.as_ref().unwrap() == "Sleep"
                     || info.user.as_ref().unwrap() == "system user"
                 {
                     false
