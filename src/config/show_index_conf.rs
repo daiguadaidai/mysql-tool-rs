@@ -12,6 +12,7 @@ const DEFAULT_EASYDB_HOST: &str = "127.0.0.1";
 const DEFAULT_EASYDB_PORT: i16 = 3306;
 const DEFAULT_EASYDB_DATABASE: &str = "easydb";
 const DEFAULT_VIP_PORT: &str = "";
+const DEFAULT_IS_MYSQL8: bool = false;
 const DEFAULT_LOG_LEVEL: &str = "info";
 const DEFAULT_IS_SQL_LOG: bool = false;
 
@@ -37,6 +38,8 @@ pub struct ShowIndexConf {
     pub show_index_db: String,
     #[arg(long, help = "执行SHOW INDEX 的表名")]
     pub show_index_table: String,
+    #[arg(long, default_value_t = DEFAULT_IS_MYSQL8, help = "是否是MySQL8")]
+    pub is_mysql8: bool,
     #[arg(long, default_value_t = String::from(DEFAULT_LOG_LEVEL), help = "日志级别")]
     pub log_level: String,
     #[arg(long, default_value_t = DEFAULT_IS_SQL_LOG, help = "执行sql是否打印日志")]

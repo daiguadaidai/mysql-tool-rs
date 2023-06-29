@@ -1,3 +1,4 @@
+use crate::models::show_index_info::ShowIndexInfo8;
 use crate::models::{ShowIndexInfo, ShowProcesslistInfo};
 use sqlx::{Error, MySql, Pool};
 
@@ -37,6 +38,23 @@ FROM information_schema.PROCESSLIST;
         );
 
         sqlx::query_as::<_, ShowIndexInfo>(&query)
+            .fetch_all(pool)
+            .await
+    }
+
+    // 执行 show index 语句
+    pub async fn show_index_8(
+        pool: &Pool<MySql>,
+        db_name: &str,
+        table_name: &str,
+    ) -> Result<Vec<ShowIndexInfo8>, Error> {
+        let query = format!(
+            "SHOW INDEX FROM `{db_name}`.`{table_name}`;",
+            db_name = db_name,
+            table_name = table_name
+        );
+
+        sqlx::query_as::<_, ShowIndexInfo8>(&query)
             .fetch_all(pool)
             .await
     }
