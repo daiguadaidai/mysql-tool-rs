@@ -1,4 +1,4 @@
-use crate::models::ShowProcesslistInfo;
+use crate::models::{ShowIndexInfo, ShowProcesslistInfo};
 use sqlx::{Error, MySql, Pool};
 
 pub struct NormalDao;
@@ -20,6 +20,23 @@ FROM information_schema.PROCESSLIST;
     "#;
 
         sqlx::query_as::<_, ShowProcesslistInfo>(query)
+            .fetch_all(pool)
+            .await
+    }
+
+    // 执行 show index 语句
+    pub async fn show_index(
+        pool: &Pool<MySql>,
+        db_name: &str,
+        table_name: &str,
+    ) -> Result<Vec<ShowIndexInfo>, Error> {
+        let query = format!(
+            "SHOW INDEX FROM `{db_name}`.`{table_name}`;",
+            db_name = db_name,
+            table_name = table_name
+        );
+
+        sqlx::query_as::<_, ShowIndexInfo>(&query)
             .fetch_all(pool)
             .await
     }

@@ -1,3 +1,4 @@
+use crate::config::show_index_conf::ShowIndexConf;
 use crate::config::show_processlist_conf::ShowProcesslistConf;
 use clap::{Parser, Subcommand};
 
@@ -33,4 +34,25 @@ pub enum Commands {
     "#
     )]
     ShowProcesslist(ShowProcesslistConf),
+
+    #[command(
+        about = "执行 SHOW INDEX 语句",
+        long_about = r#"
+示例:
+./target/release/mysql-tool-rs show-index \
+    --username="root" \
+    --password="NHJtbG91cVdmVjIxTWpLTLr7hJX88U1EC1maABXZJoI=" \
+    --easydb-host="127.0.0.1" \
+    --easydb-port=3306 \
+    --easydb-username="yh_easydb" \
+    --easydb-password="WmlPc3JSY295bTduTUFVZElpx3Z5jRDQHK4vz9T65kQ6Zkz4j/08nnapTpEqATmc" \
+    --easydb-database="easydb" \
+    --vip-port="127.0.0.1:3306" \
+    --show-index-db="db1" \
+    --show-index-table="table1" \
+    --is-sql-log \
+    --log-level="info"
+"#
+    )]
+    ShowIndex(ShowIndexConf),
 }

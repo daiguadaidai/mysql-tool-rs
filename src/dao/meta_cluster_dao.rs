@@ -18,4 +18,19 @@ WHERE is_deleted = 0
             .fetch_one(pool)
             .await
     }
+
+    // 通过 vip_port 获取所有的 vip_prot 集群
+    pub async fn find_by_vip_port(
+        pool: &Pool<MySql>,
+        vip_port: &str,
+    ) -> Result<Vec<MetaCluster>, Error> {
+        let query = format!(
+            "SELECT * FROM meta_cluster WHERE is_deleted = 0 AND vip_port = {vip_port:?}",
+            vip_port = vip_port
+        );
+
+        sqlx::query_as::<_, MetaCluster>(&query)
+            .fetch_all(pool)
+            .await
+    }
 }
