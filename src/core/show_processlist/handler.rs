@@ -1,4 +1,4 @@
-use crate::config::config::ShowProcesslist;
+use crate::config::show_processlist_conf::ShowProcesslistConf;
 use crate::dao::{InstanceDao, MetaClusterDao, NormalDao};
 use crate::error::CustomError;
 use crate::models::{Instance, ShowProcesslistInfo};
@@ -7,7 +7,7 @@ use prettytable::{format, Cell, Row, Table};
 use sqlx::{MySql, Pool};
 use tokio::sync::mpsc;
 
-pub async fn run(cfg: &ShowProcesslist) -> Result<(), CustomError> {
+pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
     log::info!("配置文件: {}", utils::string::to_json_str_pretty(cfg));
     // 检测配置文件相关参数
     cfg.check()?;
@@ -15,7 +15,7 @@ pub async fn run(cfg: &ShowProcesslist) -> Result<(), CustomError> {
     start(cfg).await
 }
 
-async fn start(cfg: &ShowProcesslist) -> Result<(), CustomError> {
+async fn start(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
     // 通过 vip_port 获取所有实例
     let instances = find_instances(cfg).await?;
     log::info!(
@@ -54,7 +54,7 @@ async fn start(cfg: &ShowProcesslist) -> Result<(), CustomError> {
 }
 
 // 获取集群实例
-async fn find_instances(cfg: &ShowProcesslist) -> Result<Vec<Instance>, CustomError> {
+async fn find_instances(cfg: &ShowProcesslistConf) -> Result<Vec<Instance>, CustomError> {
     // 获取数据库链接
     // 获取 easydb 数据库链接
     let easydb = rdbc::get_db(cfg.get_easydb_dsn().as_str(), cfg.is_sql_log)
@@ -80,7 +80,7 @@ async fn find_instances(cfg: &ShowProcesslist) -> Result<Vec<Instance>, CustomEr
 }
 
 async fn find_instances_op(
-    cfg: &ShowProcesslist,
+    cfg: &ShowProcesslistConf,
     easydb: &Pool<MySql>,
 ) -> Result<Vec<Instance>, CustomError> {
     // 通过vip_port获取集群
@@ -113,7 +113,7 @@ async fn find_instances_op(
 
 // 开始执行实例级别processlist
 async fn start_processlist_by_instance(
-    cfg: &ShowProcesslist,
+    cfg: &ShowProcesslistConf,
     instance: &Instance,
 ) -> Result<(), CustomError> {
     let password = cfg.get_password();
