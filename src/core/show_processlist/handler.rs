@@ -12,10 +12,19 @@ pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
     // 检测配置文件相关参数
     cfg.check()?;
 
-    start(cfg).await
+    // 指定 host port
+    if cfg.have_host_port() {
+        log::info!("通过 host port 获取 processlist 信息");
+        start_host_port(cfg).await?;
+    } else if cfg.have_vip_port() {
+        log::info!("通过 vip port 获取 processlist 信息");
+        start_vip_port(cfg).await?;
+    }
+
+    Ok(())
 }
 
-async fn start(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
+async fn start_vip_port(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
     // 通过 vip_port 获取所有实例
     let instances = find_instances(cfg).await?;
     log::info!(
@@ -249,4 +258,76 @@ fn get_infos_table(infos: &Vec<ShowProcesslistInfo>) -> String {
     }
 
     table.to_string()
+}
+
+async fn start_host_port(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
+    let password = cfg.get_password();
+    // 创建数据库链接
+    let db = rdbc::get_db_by_default(
+        &cfg.host,
+        cfg.port as i16,
+        &cfg.username,
+        &password,
+        "",
+        cfg.is_sql_log,
+    )
+    .await
+    .map_err(|e| {
+        CustomError::new(format!(
+            "创建需要执行 processlist 数据库链接失败. host:port:{host}:{port}. {e}",
+            host = &cfg.host,
+            port = cfg.port,
+            e = e.to_string()
+        ))
+    })?;
+
+    // 循环执行 processlist
+    loop {
+        let infos = match NormalDao::show_processlist(&db).await {
+            Ok(v) => v,
+            Err(e) => {
+                log::error!(
+                    "{host}:{port}, 获取processlist信息失败. {e}",
+                    host = &cfg.host,
+                    port = cfg.port,
+                    e = e.to_string()
+                );
+                // 休眠多少毫秒
+                let _ = tokio::time::sleep(std::time::Duration::from_millis(cfg.sleep)).await;
+                continue;
+            }
+        };
+
+        // 过滤 processlist 信息, 过滤掉 command=Sleep 和 user=system user的
+        let filter_infos = infos
+            .iter()
+            .map(|info| info.clone())
+            .filter(|info| {
+                if info.command.as_ref().unwrap() == "Sleep"
+                    || info.user.as_ref().unwrap() == "system user"
+                {
+                    false
+                } else {
+                    true
+                }
+            })
+            .collect::<Vec<ShowProcesslistInfo>>();
+
+        // 除了 Sleep 和 system user 外的processlist 超过了指定数需要进行记录
+        if filter_infos.len() >= cfg.print_cnt_threshold as usize {
+            let infos_table = get_infos_table(&infos);
+
+            // 记录日志
+            log::info!(
+                "\n---- {host}:{port} Time: {time} ----\n{infos_table}",
+                host = &cfg.host,
+                port = cfg.port,
+                time = &utils::time::now_str(utils::time::NORMAL_FMT),
+                infos_table = &infos_table,
+            );
+        }
+
+        // 休眠多少毫秒
+        let _ = tokio::time::sleep(std::time::Duration::from_millis(cfg.sleep)).await;
+    }
 }

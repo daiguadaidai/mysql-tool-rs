@@ -81,4 +81,12 @@ impl ShowProcesslistConf {
     pub fn get_password(&self) -> String {
         peep::decrypt_default(&self.password)
     }
+
+    pub fn have_host_port(&self) -> bool {
+        return !self.host.is_empty() && self.port > 0;
+    }
+
+    pub fn have_vip_port(&self) -> bool {
+        return !self.vip_port.is_empty();
+    }
 }
