@@ -1,0 +1,27 @@
+[package]
+name = "mysql-tool-rs"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rust_decimal = "1.28.1"
+rust_decimal_macros = "1.28.1"
+cron = "0.12.0"
+sqlx = {version = "0.6", features=["default", "mysql", "all-types", "runtime-tokio-native-tls"]}
+tokio = {version = "^1.23.0", features=["full"]}
+sea-orm = {version = "0.11", features=["default", "runtime-tokio-native-tls", "sqlx-mysql"]}
+clap = {version = "4.0.29", features=["default", "unstable-doc"]}
+chrono = {version = "0.4", features=["default", "serde"]}
+serde = {version = "1.0.140", features=["derive"]}
+serde_json = {version = "1.0.82"}
+aes = {version = "0.7.5"}
+block-modes = {version = "0.8.1"}
+hex-literal = {version = "0.2.1"}
+rand = {version = "0.8.4"}
+bytebuffer = {version = "0.2.1"}
+base64 = {version = "0.13.0"}
+log = {version = "0.4.17"}
+log4rs = {version = "1.2.0"}
+prettytable-rs = {version = "^0.10"}
