@@ -1,4 +1,5 @@
 use crate::config::show_processlist_conf::ShowProcesslistConf;
+use crate::core::show_processlist::all_cluster_handler;
 use crate::dao::{InstanceDao, MetaClusterDao, NormalDao};
 use crate::error::CustomError;
 use crate::models::{Instance, ShowProcesslistInfo};
@@ -19,6 +20,9 @@ pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
     } else if cfg.have_vip_port() {
         log::info!("通过 vip port 获取 processlist 信息");
         start_vip_port(cfg).await?;
+    } else if cfg.all {
+        log::info!("指定了 --all 参数, 获取所有集群实例 processlist 信息");
+        all_cluster_handler::run(cfg).await?;
     }
 
     Ok(())

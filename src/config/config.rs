@@ -28,6 +28,7 @@ pub enum Commands {
     --easydb-database="easydb" \
     --sleep=1000 \
     --print-cnt-threshold=50 \
+    --all \
     --is-sql-log \
     --log-file="logs/show_processlist.log" \
     --log-level="info"
