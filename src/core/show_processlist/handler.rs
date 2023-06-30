@@ -166,32 +166,32 @@ async fn start_processlist_by_instance(
             }
         };
 
-        // 过滤 processlist 信息, 过滤掉 command=Sleep 和 user=system user的
-        let filter_infos = infos
+        // 过滤 processlist 信息, 过滤掉 command=Sleep
+        let filter_infos_sleep = infos
             .iter()
             .map(|info| info.clone())
-            .filter(|info| {
-                if info.command.as_ref().unwrap() == "Sleep"
-                    || info.user.as_ref().unwrap() == "system user"
-                {
-                    false
-                } else {
-                    true
-                }
-            })
+            .filter(|info| info.command.as_ref().unwrap() != "Sleep")
+            .collect::<Vec<ShowProcesslistInfo>>();
+
+        // 在 过滤掉 command=Sleep 基础上过滤掉 user=system user
+        let fitler_infos_system_user = filter_infos_sleep
+            .iter()
+            .map(|info| info.clone())
+            .filter(|info| info.user.as_ref().unwrap() != "system user")
             .collect::<Vec<ShowProcesslistInfo>>();
 
         // 除了 Sleep 和 system user 外的processlist 超过了指定数需要进行记录
-        if filter_infos.len() >= cfg.print_cnt_threshold as usize {
+        if fitler_infos_system_user.len() >= cfg.print_cnt_threshold as usize {
             let infos_table = get_infos_table(&infos);
 
             // 记录日志
             log::info!(
-                "\n---- {host}:{port} Time: {time} ----\n{infos_table}",
+                "\n---- {host}:{port} Time: {time}, Total: {total}, Filter Sleep: {filter_sleep} ----\n{infos_table}",
                 host = instance.machine_host.as_ref().unwrap(),
                 port = instance.port.unwrap(),
                 time = &utils::time::now_str(utils::time::NORMAL_FMT),
-                infos_table = &infos_table,
+                total=infos.len(),
+                filter_sleep = filter_infos_sleep.len(),
             );
         }
 
@@ -302,32 +302,32 @@ async fn start_host_port(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
             }
         };
 
-        // 过滤 processlist 信息, 过滤掉 command=Sleep 和 user=system user的
-        let filter_infos = infos
+        // 过滤 processlist 信息, 过滤掉 command=Sleep
+        let filter_infos_sleep = infos
             .iter()
             .map(|info| info.clone())
-            .filter(|info| {
-                if info.command.as_ref().unwrap() == "Sleep"
-                    || info.user.as_ref().unwrap() == "system user"
-                {
-                    false
-                } else {
-                    true
-                }
-            })
+            .filter(|info| info.command.as_ref().unwrap() != "Sleep")
+            .collect::<Vec<ShowProcesslistInfo>>();
+
+        // 在 过滤掉 command=Sleep 基础上过滤掉 user=system user
+        let fitler_infos_system_user = filter_infos_sleep
+            .iter()
+            .map(|info| info.clone())
+            .filter(|info| info.user.as_ref().unwrap() != "system user")
             .collect::<Vec<ShowProcesslistInfo>>();
 
         // 除了 Sleep 和 system user 外的processlist 超过了指定数需要进行记录
-        if filter_infos.len() >= cfg.print_cnt_threshold as usize {
-            let infos_table = get_infos_table(&infos);
+        if fitler_infos_system_user.len() >= cfg.print_cnt_threshold as usize {
+            let infos_table = get_infos_table(&filter_infos_sleep);
 
             // 记录日志
             log::info!(
-                "\n---- {host}:{port} Time: {time} ----\n{infos_table}",
+                "\n---- {host}:{port} Time: {time}, Total: {total}, Filter Sleep: {filter_sleep} ----\n{infos_table}",
                 host = &cfg.host,
                 port = cfg.port,
                 time = &utils::time::now_str(utils::time::NORMAL_FMT),
-                infos_table = &infos_table,
+                total=infos.len(),
+                filter_sleep = filter_infos_sleep.len(),
             );
         }
 

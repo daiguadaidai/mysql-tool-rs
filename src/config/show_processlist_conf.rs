@@ -50,7 +50,7 @@ pub struct ShowProcesslistConf {
     pub print_cnt_threshold: u64,
     #[arg(long, default_value_t = DEFAULT_ALL, help = "所有集群对实例进行 SHOW PROCESSLIST")]
     pub all: bool,
-    #[arg(long, default_value_t = DEFAULT_OUTPUT_DIR, help = "在使用 --all 参数时每个实例的信息输出到哪个目录")]
+    #[arg(long, default_value_t = String::from(DEFAULT_OUTPUT_DIR), help = "在使用 --all 参数时每个实例的信息输出到哪个目录")]
     pub output_dir: String,
     #[arg(long, default_value_t = DEFAULT_IS_SQL_LOG, help = "执行sql是否打印日志")]
     pub is_sql_log: bool,
