@@ -33,4 +33,13 @@ WHERE is_deleted = 0
             .fetch_all(pool)
             .await
     }
+
+    // 获取所有集群
+    pub async fn all(pool: &Pool<MySql>) -> Result<Vec<MetaCluster>, Error> {
+        let query = "SELECT * FROM meta_cluster WHERE is_deleted = 0";
+
+        sqlx::query_as::<_, MetaCluster>(query)
+            .fetch_all(pool)
+            .await
+    }
 }

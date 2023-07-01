@@ -29,6 +29,8 @@ pub enum Commands {
     --sleep=1000 \
     --print-cnt-threshold=50 \
     --all \
+    --product-instance-duration=21600 \
+    --output-dir="./processlist_files" \
     --is-sql-log \
     --log-file="logs/show_processlist.log" \
     --log-level="info"
