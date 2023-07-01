@@ -192,6 +192,7 @@ async fn start_processlist_by_instance(
                 time = &utils::time::now_str(utils::time::NORMAL_FMT),
                 total=infos.len(),
                 filter_sleep = filter_infos_sleep.len(),
+                infos_table = infos_table,
             );
         }
 
@@ -328,6 +329,7 @@ async fn start_host_port(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
                 time = &utils::time::now_str(utils::time::NORMAL_FMT),
                 total=infos.len(),
                 filter_sleep = filter_infos_sleep.len(),
+                infos_table = infos_table,
             );
         }
 
