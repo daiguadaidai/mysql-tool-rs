@@ -8,6 +8,7 @@ use sqlx::{MySql, Pool};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io::Write;
+use std::path::Path;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -17,6 +18,13 @@ pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
     cfg.check_all()?;
 
     // 如果文件路径不存在则创建
+    utils::file::create_dir(&cfg.output_dir).map_err(|e| {
+        CustomError::new(format!(
+            "创建保存processlist信息目录出错, 目录: {dir}. {e}",
+            dir = &cfg.output_dir,
+            e = e.to_string()
+        ))
+    })?;
 
     // 创建一个全局共享map
     let old_instance_set = Arc::new(RwLock::new(HashSet::<String>::new()));
@@ -47,7 +55,16 @@ pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
             );
 
             // 开始执行 processlist
-            let _ = show_processlist_by_intance(&tmp_old_instance_set, &tmp_cfg, &instance).await;
+            if let Err(e) =
+                show_processlist_by_instance(&tmp_old_instance_set, &tmp_cfg, &instance).await
+            {
+                log::error!(
+                    "{host}:{port}. 执行 processlist 失败. {e}",
+                    host = &instance.machine_host.as_ref().unwrap(),
+                    port = &instance.port.unwrap(),
+                    e = e.to_string(),
+                )
+            }
 
             // 结束processlist 任务
             log::info!(
@@ -249,7 +266,7 @@ fn exists_instance(old_set: &Arc<RwLock<HashSet<String>>>, instance: &Instance) 
     old_set.read().unwrap().get(&key).is_some()
 }
 
-async fn show_processlist_by_intance(
+async fn show_processlist_by_instance(
     old_set: &Arc<RwLock<HashSet<String>>>,
     cfg: &ShowProcesslistConf,
     instance: &Instance,
@@ -257,8 +274,8 @@ async fn show_processlist_by_intance(
     let password = cfg.get_password();
     // 创建数据库链接
     let db = rdbc::get_db_by_default(
-        &cfg.host,
-        cfg.port as i16,
+        instance.machine_host.as_ref().unwrap(),
+        instance.port.unwrap() as i16,
         &cfg.username,
         &password,
         "",
@@ -350,17 +367,18 @@ async fn start_processlist(
             port = instance.port.unwrap()
         );
 
+        let mut open_ops = fs::OpenOptions::new();
+        if !Path::new(&file_path).exists() {
+            open_ops.create_new(true);
+        }
         // 打开文件
-        let mut file = fs::OpenOptions::new()
-            .append(true)
-            .open(&file_path)
-            .map_err(|e| {
-                CustomError::new(format!(
-                    "打开文件出错. 路径: {file_path}. {e}",
-                    file_path = &file_path,
-                    e = e.to_string()
-                ))
-            })?;
+        let mut file = open_ops.append(true).open(&file_path).map_err(|e| {
+            CustomError::new(format!(
+                "打开文件出错. 路径: {file_path}. {e}",
+                file_path = &file_path,
+                e = e.to_string()
+            ))
+        })?;
         // processlist写入文件
         file.write_all(log_data.as_bytes()).map_err(|e| {
             CustomError::new(format!(
