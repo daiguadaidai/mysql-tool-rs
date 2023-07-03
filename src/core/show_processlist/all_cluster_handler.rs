@@ -374,7 +374,7 @@ async fn start_processlist(
 
         let mut open_ops = fs::OpenOptions::new();
         if !Path::new(&file_path).exists() {
-            open_ops.create_new(true);
+            open_ops.create_new(true).append(true);
         } else {
             // 达到需要清理文件的时间
             if now_timestamp - *clean_timestamp >= cfg.clear_file_duration {
