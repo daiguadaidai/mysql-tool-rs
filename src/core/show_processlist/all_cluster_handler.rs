@@ -294,8 +294,6 @@ async fn show_processlist_by_instance(
     let mut clean_timestamp = utils::time::now_datetime().timestamp();
 
     loop {
-        log::warn!("清理timestamp: {}", clean_timestamp);
-
         if let Err(e) = start_processlist(cfg, instance, &db, &mut clean_timestamp).await {
             log::error!(
                 "{host}:{port}, 执行 show processlist 出错. {e}",
