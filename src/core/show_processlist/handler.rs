@@ -1,10 +1,9 @@
 use crate::config::show_processlist_conf::ShowProcesslistConf;
-use crate::core::show_processlist::all_cluster_handler;
+use crate::core::show_processlist::{all_cluster_handler, common};
 use crate::dao::{InstanceDao, MetaClusterDao, NormalDao};
 use crate::error::CustomError;
 use crate::models::{Instance, ShowProcesslistInfo};
 use crate::{rdbc, utils};
-use prettytable::{format, Cell, Row, Table};
 use sqlx::{MySql, Pool};
 use tokio::sync::mpsc;
 
@@ -182,7 +181,7 @@ async fn start_processlist_by_instance(
 
         // 除了 Sleep 和 system user 外的processlist 超过了指定数需要进行记录
         if fitler_infos_system_user.len() >= cfg.print_cnt_threshold as usize {
-            let infos_table = get_infos_table(&infos);
+            let infos_table = common::get_infos_table(&infos);
 
             // 记录日志
             log::info!(
@@ -199,70 +198,6 @@ async fn start_processlist_by_instance(
         // 休眠多少毫秒
         let _ = tokio::time::sleep(std::time::Duration::from_millis(cfg.sleep)).await;
     }
-}
-
-fn get_infos_table(infos: &Vec<ShowProcesslistInfo>) -> String {
-    let mut table = Table::new();
-    table.set_format(*format::consts::FORMAT_NO_LINESEP_WITH_TITLE);
-    // 设置title
-    table.set_titles(Row::new(vec![
-        Cell::new("Id"),
-        Cell::new("User"),
-        Cell::new("Host"),
-        Cell::new("db"),
-        Cell::new("Command"),
-        Cell::new("Time"),
-        Cell::new("State"),
-        Cell::new("Info"),
-    ]));
-
-    for info in infos.iter() {
-        let mut info_vec = Vec::new();
-        info_vec.push(Cell::new(&info.id.clone().unwrap().to_string()));
-        info_vec.push(Cell::new(
-            info.user
-                .clone()
-                .or(Some(String::from("")))
-                .as_ref()
-                .unwrap(),
-        ));
-        info_vec.push(Cell::new(
-            info.host
-                .clone()
-                .or(Some(String::from("")))
-                .as_ref()
-                .unwrap(),
-        ));
-        info_vec.push(Cell::new(
-            info.db.clone().or(Some(String::from(""))).as_ref().unwrap(),
-        ));
-        info_vec.push(Cell::new(
-            info.command
-                .clone()
-                .or(Some(String::from("")))
-                .as_ref()
-                .unwrap(),
-        ));
-        info_vec.push(Cell::new(&info.time.clone().unwrap().to_string()));
-        info_vec.push(Cell::new(
-            info.state
-                .clone()
-                .or(Some(String::from("")))
-                .as_ref()
-                .unwrap(),
-        ));
-        info_vec.push(Cell::new(
-            info.info
-                .clone()
-                .or(Some(String::from("")))
-                .as_ref()
-                .unwrap(),
-        ));
-
-        table.add_row(Row::new(info_vec));
-    }
-
-    table.to_string()
 }
 
 async fn start_host_port(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
@@ -319,7 +254,7 @@ async fn start_host_port(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
 
         // 除了 Sleep 和 system user 外的processlist 超过了指定数需要进行记录
         if fitler_infos_system_user.len() >= cfg.print_cnt_threshold as usize {
-            let infos_table = get_infos_table(&filter_infos_sleep);
+            let infos_table = common::get_infos_table(&filter_infos_sleep);
 
             // 记录日志
             log::info!(

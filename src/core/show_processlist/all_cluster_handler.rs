@@ -1,10 +1,13 @@
 use crate::config::show_processlist_conf::ShowProcesslistConf;
-use crate::dao::{InstanceDao, MetaClusterDao};
+use crate::core::show_processlist::common;
+use crate::dao::{InstanceDao, MetaClusterDao, NormalDao};
 use crate::error::CustomError;
-use crate::models::Instance;
+use crate::models::{Instance, ShowProcesslistInfo};
 use crate::{rdbc, utils};
 use sqlx::{MySql, Pool};
 use std::collections::{HashMap, HashSet};
+use std::fs;
+use std::io::Write;
 use std::sync::{Arc, RwLock};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
@@ -12,6 +15,8 @@ use tokio::sync::mpsc::Sender;
 pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
     // 检测参数
     cfg.check_all()?;
+
+    // 如果文件路径不存在则创建
 
     // 创建一个全局共享map
     let old_instance_set = Arc::new(RwLock::new(HashSet::<String>::new()));
@@ -31,7 +36,7 @@ pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
 
     while let Some(instance) = rx.recv().await {
         let tmp_old_instance_set = old_instance_set.clone();
-        let _tmp_cfg = cfg.clone();
+        let tmp_cfg = cfg.clone();
         tokio::spawn(async move {
             // 添加实例
             add_instance(&tmp_old_instance_set, &instance);
@@ -42,10 +47,11 @@ pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
             );
 
             // 开始执行 processlist
+            let _ = show_processlist_by_intance(&tmp_old_instance_set, &tmp_cfg, &instance).await;
 
             // 结束processlist 任务
             log::info!(
-                "实例 {host}:{port} 结束processlist完成",
+                "实例 {host}:{port} processlist 结束",
                 host = &instance.machine_host.as_ref().unwrap(),
                 port = &instance.port.unwrap(),
             );
@@ -231,4 +237,139 @@ fn add_instance(old_set: &Arc<RwLock<HashSet<String>>>, instance: &Instance) {
 
     let mut old_set = old_set.write().unwrap();
     old_set.insert(key);
+}
+
+fn exists_instance(old_set: &Arc<RwLock<HashSet<String>>>, instance: &Instance) -> bool {
+    let key = format!(
+        "{host}:{port}",
+        host = instance.machine_host.as_ref().unwrap(),
+        port = instance.port.unwrap(),
+    );
+
+    old_set.read().unwrap().get(&key).is_some()
+}
+
+async fn show_processlist_by_intance(
+    old_set: &Arc<RwLock<HashSet<String>>>,
+    cfg: &ShowProcesslistConf,
+    instance: &Instance,
+) -> Result<(), CustomError> {
+    let password = cfg.get_password();
+    // 创建数据库链接
+    let db = rdbc::get_db_by_default(
+        &cfg.host,
+        cfg.port as i16,
+        &cfg.username,
+        &password,
+        "",
+        cfg.is_sql_log,
+    )
+    .await
+    .map_err(|e| {
+        CustomError::new(format!(
+            "创建需要执行 processlist 数据库链接失败. host:port:{host}:{port}. {e}",
+            host = instance.machine_host.as_ref().unwrap(),
+            port = instance.port.unwrap(),
+            e = e.to_string()
+        ))
+    })?;
+
+    loop {
+        if let Err(e) = start_processlist(cfg, instance, &db).await {
+            log::error!(
+                "{host}:{port}, 执行 show processlist 出错. {e}",
+                host = instance.machine_host.as_ref().unwrap(),
+                port = instance.port.unwrap(),
+                e = e.to_string()
+            );
+            // 休眠多少毫秒, 出错后需要睡眠60秒后再重新
+            let _ = tokio::time::sleep(std::time::Duration::from_millis(60 * 1000)).await;
+        }
+
+        // 实例已经不存在, 被移除了就不跑了
+        if !exists_instance(old_set, instance) {
+            break;
+        }
+
+        // 休眠多少毫秒
+        let _ = tokio::time::sleep(std::time::Duration::from_millis(cfg.sleep)).await;
+    }
+
+    let _ = db.close().await;
+
+    Ok(())
+}
+
+async fn start_processlist(
+    cfg: &ShowProcesslistConf,
+    instance: &Instance,
+    db: &Pool<MySql>,
+) -> Result<(), CustomError> {
+    let infos = NormalDao::show_processlist(&db).await.map_err(|e| {
+        CustomError::new(format!(
+            "{host}:{port}, 获取processlist信息失败. {e}",
+            host = instance.machine_host.as_ref().unwrap(),
+            port = instance.port.unwrap(),
+            e = e.to_string()
+        ))
+    })?;
+
+    // 过滤 processlist 信息, 过滤掉 command=Sleep
+    let filter_infos_sleep = infos
+        .iter()
+        .map(|info| info.clone())
+        .filter(|info| info.command.as_ref().unwrap() != "Sleep")
+        .collect::<Vec<ShowProcesslistInfo>>();
+
+    // 在 过滤掉 command=Sleep 基础上过滤掉 user=system user
+    let fitler_infos_system_user = filter_infos_sleep
+        .iter()
+        .map(|info| info.clone())
+        .filter(|info| info.user.as_ref().unwrap() != "system user")
+        .collect::<Vec<ShowProcesslistInfo>>();
+
+    // 除了 Sleep 和 system user 外的processlist 超过了指定数需要进行记录
+    if fitler_infos_system_user.len() >= cfg.print_cnt_threshold as usize {
+        let infos_table = common::get_infos_table(&infos);
+
+        let log_data = format!(
+                "\n---- {host}:{port} Time: {time}, Total: {total}, Filter Sleep: {filter_sleep} ----\n{infos_table}",
+                host = instance.machine_host.as_ref().unwrap(),
+                port = instance.port.unwrap(),
+                time = &utils::time::now_str(utils::time::NORMAL_FMT),
+                total=infos.len(),
+                filter_sleep = filter_infos_sleep.len(),
+                infos_table = infos_table,
+            );
+
+        // 打开文件, 并且追加内容
+        let file_path = format!(
+            "{dir}/{host}_{port}.txt",
+            dir = &cfg.output_dir,
+            host = instance.machine_host.as_ref().unwrap(),
+            port = instance.port.unwrap()
+        );
+
+        // 打开文件
+        let mut file = fs::OpenOptions::new()
+            .append(true)
+            .open(&file_path)
+            .map_err(|e| {
+                CustomError::new(format!(
+                    "打开文件出错. 路径: {file_path}. {e}",
+                    file_path = &file_path,
+                    e = e.to_string()
+                ))
+            })?;
+        // processlist写入文件
+        file.write_all(log_data.as_bytes()).map_err(|e| {
+            CustomError::new(format!(
+                "写入 processlist 信息失败, 文件: {file_path}, {e}",
+                file_path = &file_path,
+                e = e.to_string()
+            ))
+        })?;
+    }
+
+    Ok(())
 }
