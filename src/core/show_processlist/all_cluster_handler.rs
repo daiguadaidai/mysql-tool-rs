@@ -373,7 +373,7 @@ async fn start_processlist(
 
     // 除了 Sleep 和 system user 外的processlist 超过了指定数需要进行记录
     if fitler_infos_system_user.len() >= cfg.print_cnt_threshold as usize {
-        let infos_table = common::get_infos_table(&infos);
+        let infos_table = common::get_infos_table(&filter_infos_sleep);
 
         let log_data = format!(
                 "\n---- {host}:{port} Time: {time}, Total: {total}, Filter Sleep: {filter_sleep} ----\n{infos_table}",
