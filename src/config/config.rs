@@ -32,6 +32,8 @@ pub enum Commands {
     --product-instance-duration=21600 \
     --output-dir="./processlist_files" \
     --clear-file-duration=172800 \
+    --ignore-instances="localhost:3306" \
+    --ignore-instances="localhost:3307" \
     --is-sql-log \
     --log-file="logs/show_processlist.log" \
     --log-level="info"
