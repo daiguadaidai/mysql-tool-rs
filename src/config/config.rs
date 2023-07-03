@@ -31,6 +31,7 @@ pub enum Commands {
     --all \
     --product-instance-duration=21600 \
     --output-dir="./processlist_files" \
+    --clear-file-duration=172800 \
     --is-sql-log \
     --log-file="logs/show_processlist.log" \
     --log-level="info"

@@ -22,6 +22,7 @@ const DEFAULT_OUTPUT_DIR: &str = "./processlist_files";
 const DEFAULT_PRODUCT_INSTANCE_DURATION: u64 = 6 * 60 * 60;
 const DEFAULT_SLEEP_SHOW_PROCESSLIT: u64 = 1000; // 单位毫秒
 const DEFAULT_PRINT_CNT_THRESHOLD: u64 = 50;
+const DEFAULT_CLEAR_FILE_DURATION: i64 = 2 * 24 * 60 * 60; // 清理文件的时间
 
 #[derive(Args, Debug, Serialize, Deserialize, Clone)]
 pub struct ShowProcesslistConf {
@@ -53,8 +54,10 @@ pub struct ShowProcesslistConf {
     pub all: bool,
     #[arg(long, default_value_t = String::from(DEFAULT_OUTPUT_DIR), help = "在使用 --all 参数时每个实例的信息输出到哪个目录")]
     pub output_dir: String,
-    #[arg(long, default_value_t = DEFAULT_PRODUCT_INSTANCE_DURATION, help = "在指定 --all 参数时多久进行重新生成一次实例(单位:s)")]
+    #[arg(long, default_value_t = DEFAULT_PRODUCT_INSTANCE_DURATION, help = "在指定 --all 参数时, 多久进行重新生成一次实例(单位:s)")]
     pub product_instance_duration: u64,
+    #[arg(long, default_value_t = DEFAULT_CLEAR_FILE_DURATION, help = "在指定 --all 参数时, 保存processlist信息文件多久清理一次(单位:s)")]
+    pub clear_file_duration: i64,
     #[arg(long, default_value_t = DEFAULT_IS_SQL_LOG, help = "执行sql是否打印日志")]
     pub is_sql_log: bool,
     #[arg(long, default_value_t = String::from(DEFAULT_LOG_FILE_SHOW_PROCESSLIT), help = "日志文件")]

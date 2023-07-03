@@ -291,8 +291,12 @@ async fn show_processlist_by_instance(
         ))
     })?;
 
+    let mut clean_timestamp = utils::time::now_datetime().timestamp();
+
     loop {
-        if let Err(e) = start_processlist(cfg, instance, &db).await {
+        log::warn!("清理timestamp: {}", clean_timestamp);
+
+        if let Err(e) = start_processlist(cfg, instance, &db, &mut clean_timestamp).await {
             log::error!(
                 "{host}:{port}, 执行 show processlist 出错. {e}",
                 host = instance.machine_host.as_ref().unwrap(),
@@ -321,6 +325,7 @@ async fn start_processlist(
     cfg: &ShowProcesslistConf,
     instance: &Instance,
     db: &Pool<MySql>,
+    clean_timestamp: &mut i64,
 ) -> Result<(), CustomError> {
     let infos = NormalDao::show_processlist(&db).await.map_err(|e| {
         CustomError::new(format!(
@@ -359,6 +364,8 @@ async fn start_processlist(
                 infos_table = infos_table,
             );
 
+        let now_timestamp = utils::time::now_datetime().timestamp();
+
         // 打开文件, 并且追加内容
         let file_path = format!(
             "{dir}/{host}_{port}.txt",
@@ -370,9 +377,21 @@ async fn start_processlist(
         let mut open_ops = fs::OpenOptions::new();
         if !Path::new(&file_path).exists() {
             open_ops.create_new(true);
+        } else {
+            // 达到需要清理文件的时间
+            if now_timestamp - *clean_timestamp >= cfg.clear_file_duration {
+                open_ops.write(true).truncate(true);
+
+                // 清理后清理时间变成当前时间
+                *clean_timestamp = now_timestamp;
+            } else {
+                // append打开
+                open_ops.append(true);
+            }
         }
+
         // 打开文件
-        let mut file = open_ops.append(true).open(&file_path).map_err(|e| {
+        let mut file = open_ops.open(&file_path).map_err(|e| {
             CustomError::new(format!(
                 "打开文件出错. 路径: {file_path}. {e}",
                 file_path = &file_path,
