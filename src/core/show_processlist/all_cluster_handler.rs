@@ -147,7 +147,7 @@ async fn find_all_instances(cfg: &ShowProcesslistConf) -> Result<Vec<Instance>, 
         })?;
 
     // 获取所有实例
-    let instances = match find_all_instances_op(&easydb).await {
+    let mut instances = match find_all_instances_op(&easydb).await {
         Ok(v) => v,
         Err(e) => {
             // 关闭链接
@@ -155,6 +155,29 @@ async fn find_all_instances(cfg: &ShowProcesslistConf) -> Result<Vec<Instance>, 
             return Err(e);
         }
     };
+
+    let ignore_instances = cfg.ignore_instances_to_set();
+    instances = instances
+        .into_iter()
+        .filter(|instance| {
+            let key = format!(
+                "{host}:{port}",
+                host = instance.machine_host.as_ref().unwrap(),
+                port = instance.port.unwrap(),
+            );
+
+            if ignore_instances.get(&key).is_some() {
+                log::info!(
+                    "该实例将不进行获取processlist信息, 手动指定了忽略该实例 {host}:{port}",
+                    host = instance.machine_host.as_ref().unwrap(),
+                    port = instance.port.unwrap(),
+                );
+                return false;
+            } else {
+                return true;
+            }
+        })
+        .collect::<Vec<Instance>>();
 
     // 关闭 数据库链接
     let _ = easydb.close().await;

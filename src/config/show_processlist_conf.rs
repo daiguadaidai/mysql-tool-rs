@@ -2,6 +2,7 @@ use crate::error::CustomError;
 use crate::utils::peep;
 use clap::Args;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 
 const DEFAULT_USERNAME: &str = "root";
 const DEFAULT_PASSWORD: &str = "NHJtbG91cVdmVjIxTWpLTLr7hJX88U1EC1maABXZJoI=";
@@ -58,6 +59,12 @@ pub struct ShowProcesslistConf {
     pub product_instance_duration: u64,
     #[arg(long, default_value_t = DEFAULT_CLEAR_FILE_DURATION, help = "在指定 --all 参数时, 保存processlist信息文件多久清理一次(单位:s)")]
     pub clear_file_duration: i64,
+    #[arg(
+        long,
+        action = clap::ArgAction::Append,
+        help = "在指定 --all 参数时, 忽略哪些实例不进行手机 processlist 信息"
+    )]
+    pub ignore_instances: Vec<String>,
     #[arg(long, default_value_t = DEFAULT_IS_SQL_LOG, help = "执行sql是否打印日志")]
     pub is_sql_log: bool,
     #[arg(long, default_value_t = String::from(DEFAULT_LOG_FILE_SHOW_PROCESSLIT), help = "日志文件")]
@@ -111,5 +118,12 @@ impl ShowProcesslistConf {
 
     pub fn have_vip_port(&self) -> bool {
         return !self.vip_port.is_empty();
+    }
+
+    pub fn ignore_instances_to_set(&self) -> HashSet<String> {
+        self.ignore_instances
+            .iter()
+            .map(|instance| instance.clone())
+            .collect::<HashSet<String>>()
     }
 }
