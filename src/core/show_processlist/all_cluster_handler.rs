@@ -72,6 +72,9 @@ pub async fn run(cfg: &ShowProcesslistConf) -> Result<(), CustomError> {
                 host = &instance.machine_host.as_ref().unwrap(),
                 port = &instance.port.unwrap(),
             );
+
+            // 删除结束的实例
+            delete_instance(&old_instance_set, &instance);
         });
     }
 
@@ -112,7 +115,7 @@ async fn product_instance(
         let need_remove_instances = get_need_remove_instance(old_instance_set, &instance_map);
 
         // 对实例进行删除
-        delete_instance(old_instance_set, &need_remove_instances);
+        delete_instance_by_vec(old_instance_set, &need_remove_instances);
 
         // 将需要新增的实例进行发送
         for instance in need_add_instances.into_iter() {
@@ -260,12 +263,26 @@ fn get_need_remove_instance(
     need_remove_instances
 }
 
-fn delete_instance(old_set: &Arc<RwLock<HashSet<String>>>, need_delete_instances: &Vec<String>) {
+fn delete_instance_by_vec(
+    old_set: &Arc<RwLock<HashSet<String>>>,
+    need_delete_instances: &Vec<String>,
+) {
     let mut old_set = old_set.write().unwrap();
     for key in need_delete_instances.iter() {
         old_set.remove(key);
         log::info!("{}, 已经从 set 中移除", key)
     }
+}
+
+fn delete_instance(old_set: &Arc<RwLock<HashSet<String>>>, instance: &Instance) {
+    let key = format!(
+        "{host}:{port}",
+        host = instance.machine_host.as_ref().unwrap(),
+        port = instance.port.unwrap(),
+    );
+    let mut old_set = old_set.write().unwrap();
+    old_set.remove(&key);
+    log::info!("{}, 已经从 set 中移除", key)
 }
 
 fn add_instance(old_set: &Arc<RwLock<HashSet<String>>>, instance: &Instance) {
